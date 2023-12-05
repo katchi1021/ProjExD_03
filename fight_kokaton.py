@@ -7,7 +7,7 @@ import os
 
 WIDTH = 1600  # ゲームウィンドウの幅
 HEIGHT = 900  # ゲームウィンドウの高さ
-MYDIR = os.path
+MAIN_DIR = os.path.split(os.path.abspath(__file__))[0]
 NUM_OF_BOMBS = 10
 COLORS = {"red": (230, 0, 0),
           "blue": (0, 0, 230),
@@ -49,7 +49,7 @@ class Bird:
         引数1 num：こうかとん画像ファイル名の番号
         引数2 xy：こうかとん画像の位置座標タプル
         """
-        # img0 = pg.transform.rotozoom(pg.image.load(f"ex03/fig/{num}.png"), 0, 2.0)
+        # img0 = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/{num}.png"), 0, 2.0)
         # img = pg.transform.flip(img0, True, False)  # デフォルトのこうかとん（右向き）
         # self.imgs = {  # 0度から反時計回りに定義
         #     (+5, 0): img,  # 右
@@ -63,7 +63,7 @@ class Bird:
         # }
         self.img = pg.transform.flip(  # 左右反転
             pg.transform.rotozoom(  # 2倍に拡大
-                pg.image.load(f"ex03/fig/{num}.png"), 
+                pg.image.load(f"{MAIN_DIR}/fig/{num}.png"), 
                 0, 
                 2.0), 
             True, 
@@ -78,7 +78,7 @@ class Bird:
         引数1 num：こうかとん画像ファイル名の番号
         引数2 screen：画面Surface
         """
-        self.img = pg.transform.rotozoom(pg.image.load(f"ex03/fig/{num}.png"), 0, 2.0)
+        self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/{num}.png"), 0, 2.0)
         screen.blit(self.img, self.rct)
 
     def update(self, key_lst: list[bool], screen: pg.Surface):
@@ -99,8 +99,11 @@ class Bird:
 
 
 class Beam:
+    """
+    ビームのクラス
+    """
     def __init__(self, kk_rct):
-        self.img = pg.transform.rotozoom(pg.image.load(f"ex03/fig/beam.png"), 0, 2.0)
+        self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/beam.png"), 0, 2.0)
         self.rct = self.img.get_rect()
         kk_x, kk_y = kk_rct.center
         self.rct.center = (kk_x+100, kk_y)
@@ -151,13 +154,31 @@ class Bomb:
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
 
+class Explosion():
+    """
+    爆発エフェクトのクラス
+    """
+    def __init__(self, bomb_rct):
+        img = pg.image.load(f"{MAIN_DIR}/fig/explosion.gif")
+        self.rct = img.get_rect()
+        self.imgs = [img,
+                    pg.transform.flip(img, True, False),
+                    pg.transform.flip(img, True, True),
+                    pg.transform.flip(img, False, True)]
+        self.rct.center = bomb_rct.center
+        self.life = 5
 
+    def update(self, screen: pg.Surface):
+        img = self.imgs[self.life%4]
+        screen.blit(img, self.rct)
+        
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
     screen = pg.display.set_mode((WIDTH, HEIGHT))    
-    bg_img = pg.image.load("ex03/fig/pg_bg.jpg")
+    bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
     bird = Bird(3, (900, 400))
     bombs = list()
+    explosions = list()
     for _ in range(NUM_OF_BOMBS):
         bombs.append(Bomb())
     beam = None
@@ -166,7 +187,6 @@ def main():
     tmr = 0
     while True:
         key_lst = pg.key.get_pressed()
-        print(key_lst[pg.K_SPACE])
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
@@ -186,18 +206,16 @@ def main():
 
             if beam is not None:
                 if bomb.rct.colliderect(beam.rct):
-                    beam.vx = 0
-                    beam.rct.center = (-100, -100)
-                    bomb.vx = bomb.vy = 0
-                    bomb.rct.center = (-200, -200)
-                    beam.update(screen)
-                    bomb = None
-
+                    explosions.append(Explosion(bomb.rct))
+                    beam = None
+                    bomb = None 
 
         bird.update(key_lst, screen)
-        for bomb in  bombs:
+        for bomb in bombs:
             if bomb is not None: bomb.update(screen)
         if beam is not None: beam.update(screen)
+        for explosion in explosions:
+            if explosion.life != 0: explosion.update(screen)
         pg.display.update()
         tmr += 1
         clock.tick(50)
