@@ -4,7 +4,12 @@ import pygame as pg
 import random
 import sys
 import time
-
+# import random
+# import sys
+# import time
+# import pygame as pg
+# import os
+# import math
 
 WIDTH = 1600  # ゲームウィンドウの幅
 HEIGHT = 900  # ゲームウィンドウの高さ
