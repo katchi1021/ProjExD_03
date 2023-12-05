@@ -1,22 +1,25 @@
+import math
+import os
+import pygame as pg
 import random
 import sys
 import time
-import pygame as pg
-import os
-import math
 
 
 WIDTH = 1600  # ゲームウィンドウの幅
 HEIGHT = 900  # ゲームウィンドウの高さ
 MAIN_DIR = os.path.split(os.path.abspath(__file__))[0]
 NUM_OF_BOMBS = 10
-COLORS = {"red": (230, 0, 0),
-          "blue": (0, 0, 230),
-          "green": (0, 230, 0),
-          "yellow": (0, 230, 230),
-          "orange": (230, 0, 230),
-          "pink": (230, 130, 130),
-          "purple": (230, 230, 50)}
+COLORS = {"red": (255, 0, 0),
+          "blue": (0, 0, 255),
+          "green": (0, 255, 0),
+          "yellow": (0, 255, 255),
+          "orange": (255, 0, 255),
+          "pink": (255, 192, 203),
+          "purple": (128, 0, 128),
+          "teal": (0, 128, 128),
+          "lime": (0, 255, 0),
+          "golden":  (218, 165, 32)}
 
 
 def check_bound(obj_rct: pg.Rect) -> tuple[bool, bool]:
@@ -128,12 +131,30 @@ class Beam:
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
 
+class Guided:
+    def __init__(self, kk, bombs):
+        self.img = pg.image.load(f"{MAIN_DIR}/fig/beam.png")
+        self.rct = self.img.get_rect()
+        kk_x, kk_y = kk.rct.center
+        x, y = kk.dire
+        self.rct.center = (kk_x+10*x, kk_y+10*y)
+        theta = math.atan2(-y, x)
+        self.img = pg.transform.rotozoom(self.img, math.degrees(theta), 1.0)
+        self.vx = 
+        self.vy = 
+        rect_ydis = rect1.center[1] - rect2.center[1]
+        rect_xdis = rect1.center[0] - rect2.center[0]
+        r = rect_xdis**2 + rect_ydis**2
+        r = r**0.5
+        dx = rect_xdis/r
+        dy = rect_ydis/r
+        
 
 class Bomb:
     """
     爆弾に関するクラス
     """
-    def __init__(self):
+    def __init__(self, bird:Bird):
         """
         引数に基づき爆弾円Surfaceを生成する
         引数1 color：爆弾円の色タプル
@@ -141,15 +162,20 @@ class Bomb:
         """
         x = (random.random()-0.5) * 2
         y = 1 - x**2
-        color = COLORS[random.choice(list(COLORS.keys()))]
-        rad = random.randint(10, 40)
+        clrname = random.choice(list(COLORS.keys()))
+        color = COLORS[clrname]
+        del COLORS[clrname]
+        rad = random.randint(10, 80)
         self.img = pg.Surface((2*rad, 2*rad))
         pg.draw.circle(self.img, color, (rad, rad), rad)
         self.img.set_colorkey((0, 0, 0))
         self.rct = self.img.get_rect()
         self.rct.center = random.randint(100, WIDTH-100), random.randint(100, HEIGHT-100)
-        self.vx = 5 * x
-        self.vy = 5 * y
+        # リスキル対策
+        while self.rct.colliderect(bird.rct):
+            self.rct.center = random.randint(100, WIDTH-100), random.randint(100, HEIGHT-100)
+        self.vx = 7 * x
+        self.vy = 7 * y
 
     def update(self, screen: pg.Surface):
         """
@@ -176,16 +202,27 @@ class Explosion:
                     pg.transform.flip(img, True, True),
                     pg.transform.flip(img, False, True)]
         self.rct.center = bomb_rct.center
-        self.life = 30
+        self.life = 10
 
     def update(self, screen: pg.Surface):
+        """
+        self.lifeに基づいて爆弾のイメージを変化させる
+        self.lifeを1減らす
+        """
         img = self.imgs[self.life%4]
         screen.blit(img, self.rct)
         self.life -= 1
 
 
 class Score:
+    """
+    スコアの表示に関するクラス
+    """
     def __init__(self):
+        """
+        self.score(スコア)の初期値:0
+        文字色を青で設定
+        """
         self.score = 0
         self.font = pg.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
         self.text = self.font.render(f"スコア:{self.score}", 0, (0, 0, 255))
@@ -207,9 +244,11 @@ def main():
     score = Score()
     bombs = list()
     explosions = list()
-    for _ in range(NUM_OF_BOMBS):
-        bombs.append(Bomb())
+    bombs = [(Bomb(bird)) for _ in range(NUM_OF_BOMBS)]
     beams = list()
+    guideds = list()
+    cool_time = 0
+    fps = 50
 
     clock = pg.time.Clock()
     tmr = 0
@@ -219,11 +258,24 @@ def main():
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 return      
-            
-        if key_lst[pg.K_SPACE]: beams.append(Beam(bird))
+
+        if key_lst[pg.K_SPACE] and cool_time < 0:
+            beams.append(Beam(bird))
+            cool_time = 10
+
+        if key_lst[pg.K_LCTRL]:
+            guideds.append(Guided(bird, bombs))
+
+        if key_lst[pg.K_ESCAPE]: fps = 0 if fps != 0 else 50
         
         screen.blit(bg_img, [0, 0]) 
         
+        if bombs == []:
+            bird.change_img(6, screen)
+            pg.display.update()
+            time.sleep(2)
+            return
+
         for bn, bomb in enumerate(bombs):
             if bomb is not None:
                 if bird.rct.colliderect(bomb.rct):
@@ -234,8 +286,7 @@ def main():
                     return
                 
                 for beamn, beam in enumerate(beams):
-                    if beam is not None:
-                        if bomb.rct.colliderect(beam.rct):
+                    if beam is not None and bomb.rct.colliderect(beam.rct):
                             explosions.append(Explosion(bomb.rct))
                             score.score += 1
                             beams[beamn] = None
@@ -243,7 +294,8 @@ def main():
 
         beams = [_ for _ in beams if _ is not None]
         bombs = [_ for _ in bombs if _ is not None]
-                        
+        explosions = [_ for _ in explosions if _.life > 0]
+
         score.update(screen)
         bird.update(key_lst, screen)
         for bomb in bombs:
@@ -253,10 +305,11 @@ def main():
            if check_bound(beam.rct) != (True, True):
                beams.remove(beam)
         for explosion in explosions:
-            if explosion.life != 0: explosion.update(screen)
+            explosion.update(screen)
         pg.display.update()
         tmr += 1
-        clock.tick(50)
+        cool_time -= 1
+        clock.tick(fps)
 
 
 if __name__ == "__main__":
