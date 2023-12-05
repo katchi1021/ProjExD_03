@@ -209,7 +209,7 @@ def main():
     explosions = list()
     for _ in range(NUM_OF_BOMBS):
         bombs.append(Bomb())
-    beam = None
+    beams = list()
 
     clock = pg.time.Clock()
     tmr = 0
@@ -220,7 +220,7 @@ def main():
             if event.type == pg.QUIT:
                 return      
             
-        if key_lst[pg.K_SPACE]: beam = Beam(bird)
+        if key_lst[pg.K_SPACE]: beams.append(Beam(bird))
         
         screen.blit(bg_img, [0, 0]) 
         
@@ -232,19 +232,26 @@ def main():
                     pg.display.update()
                     time.sleep(1)
                     return
+                
+                for beamn, beam in enumerate(beams):
+                    if beam is not None:
+                        if bomb.rct.colliderect(beam.rct):
+                            explosions.append(Explosion(bomb.rct))
+                            score.score += 1
+                            beams[beamn] = None
+                            bombs[bn] = None
 
-                if beam is not None:
-                    if bomb.rct.colliderect(beam.rct):
-                        explosions.append(Explosion(bomb.rct))
-                        score.score += 1
-                        beam = None
-                        bombs[bn] = None
+        beams = [_ for _ in beams if _ is not None]
+        bombs = [_ for _ in bombs if _ is not None]
                         
         score.update(screen)
         bird.update(key_lst, screen)
         for bomb in bombs:
-            if bomb is not None: bomb.update(screen)
-        if beam is not None: beam.update(screen)
+            bomb.update(screen)
+        for beam in beams:
+           beam.update(screen)
+           if check_bound(beam.rct) != (True, True):
+               beams.remove(beam)
         for explosion in explosions:
             if explosion.life != 0: explosion.update(screen)
         pg.display.update()
