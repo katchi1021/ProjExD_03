@@ -73,6 +73,7 @@ class Bird:
         self.img = img
         self.rct = img.get_rect()
         self.rct.center = xy
+        self.dire = (5, 0)
 
     def change_img(self, num: int, screen: pg.Surface):
         """
@@ -163,7 +164,7 @@ class Bomb:
         self.rct.move_ip(self.vx, self.vy)
         screen.blit(self.img, self.rct)
 
-class Explosion():
+class Explosion:
     """
     爆発エフェクトのクラス
     """
@@ -181,12 +182,29 @@ class Explosion():
         img = self.imgs[self.life%4]
         screen.blit(img, self.rct)
         self.life -= 1
-        
+
+
+class Score:
+    def __init__(self):
+        self.score = 0
+        self.font = pg.font.SysFont("hgp創英角ﾎﾟｯﾌﾟ体", 30)
+        self.text = self.font.render(f"スコア:{self.score}", 0, (0, 0, 255))
+        self.rct = self.text.get_rect()
+        self.rct.center = (100, 850)
+
+    def hit(self):
+        pass
+
+    def update(self, screen: pg.Surface):
+        self.text = self.font.render(f"スコア:{self.score}", 0, (0, 0, 255))
+        screen.blit(self.text, self.rct)
+
 def main():
     pg.display.set_caption("たたかえ！こうかとん")
     screen = pg.display.set_mode((WIDTH, HEIGHT))    
     bg_img = pg.image.load(f"{MAIN_DIR}/fig/pg_bg.jpg")
     bird = Bird(3, (900, 400))
+    score = Score()
     bombs = list()
     explosions = list()
     for _ in range(NUM_OF_BOMBS):
@@ -200,7 +218,7 @@ def main():
 
         for event in pg.event.get():
             if event.type == pg.QUIT:
-                return
+                return      
             
         if key_lst[pg.K_SPACE]: beam = Beam(bird)
         
@@ -218,9 +236,11 @@ def main():
                 if beam is not None:
                     if bomb.rct.colliderect(beam.rct):
                         explosions.append(Explosion(bomb.rct))
+                        score.score += 1
                         beam = None
                         bombs[bn] = None
-        
+                        
+        score.update(screen)
         bird.update(key_lst, screen)
         for bomb in bombs:
             if bomb is not None: bomb.update(screen)
