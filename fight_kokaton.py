@@ -3,6 +3,7 @@ import sys
 import time
 import pygame as pg
 import os
+import math
 
 
 WIDTH = 1600  # ゲームウィンドウの幅
@@ -99,6 +100,7 @@ class Bird:
             self.rct.move_ip(-sum_mv[0], -sum_mv[1])
         if sum_mv != [0, 0]:
             self.img = self.imgs[tuple(sum_mv)]
+            self.dire = tuple(sum_mv)
         screen.blit(self.img, self.rct)
 
 
@@ -106,13 +108,16 @@ class Beam:
     """
     ビームのクラス
     """
-    def __init__(self, kk_rct):
-        self.img = pg.transform.rotozoom(pg.image.load(f"{MAIN_DIR}/fig/beam.png"), 0, 2.0)
+    def __init__(self, kk):
+        self.img = pg.image.load(f"{MAIN_DIR}/fig/beam.png")
         self.rct = self.img.get_rect()
-        kk_x, kk_y = kk_rct.center
-        self.rct.center = (kk_x+100, kk_y)
-        self.vx = 5
-        self.vy = 0
+        kk_x, kk_y = kk.rct.center
+        x, y = kk.dire
+        self.rct.center = (kk_x+10*x, kk_y+10*y)
+        theta = math.atan2(-y, x)
+        self.img = pg.transform.rotozoom(self.img, math.degrees(theta), 1.0)
+        self.vx = x
+        self.vy = y
 
     def update(self, screen: pg.Surface):
         """
@@ -197,7 +202,7 @@ def main():
             if event.type == pg.QUIT:
                 return
             
-        if key_lst[pg.K_SPACE]: beam = Beam(bird.rct)
+        if key_lst[pg.K_SPACE]: beam = Beam(bird)
         
         screen.blit(bg_img, [0, 0]) 
         
