@@ -175,6 +175,10 @@ def main():
                 bomb.rct.center = (-200, -200)
                 beam.update(screen)
                 bomb.update(screen)
+                bird.change_img(6, screen)
+                pg.display.update()
+                time.sleep(3)
+                return
 
         bird.update(key_lst, screen)
         bomb.update(screen)
